@@ -1,13 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg'; // <-- ADD THIS LINE
 
-const prisma = new PrismaClient();
+// Set up the PostgreSQL adapter
+const connectionString = process.env.DATABASE_URL;
+const adapter = new PrismaPg({ connectionString });
+
+// Pass the adapter to PrismaClient
+const prisma = new PrismaClient({ adapter });
+
 const app = express();
-
-app.use(cors());
-app.use(express.json());
-
 app.use(cors());
 app.use(express.json());
 
@@ -20,12 +23,6 @@ app.use(
   "/api/users",
   createUserRoutes(prisma)
 );
-
-app.get("/", (req, res) => {
-  res.json({
-    message: "Reflex API is running",
-  });
-});
 
 app.get("/api/health", async (req, res) => {
   try {
