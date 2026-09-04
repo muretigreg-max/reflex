@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { PrismaClient } from "./generated/prisma/client.ts";
+import { PrismaClient } from '@prisma/client';
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { createDeliveryRoutes } from "./routes/deliveryRoutes.ts";
 import { createUserRoutes } from "./routes/userRoutes";
