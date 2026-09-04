@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String   @unique
+  email     String?  @unique
+  password  String
+  role      String
+  createdAt DateTime @default(now())
+
+  deliveriesAsRetailer Delivery[]      @relation("RetailerDeliveries")
+  deliveriesAsRider    Delivery[]      @relation("RiderDeliveries")
+  statusChanges        StatusHistory[]
+}
+
+model Delivery {
+  id              Int      @id @default(autoincrement())
+  trackingCode    String   @unique
+  customerName    String
+  customerPhone   String
+  deliveryAddress String
+  itemDescription String
+
+  status String @default("OPEN")
+
+  qrConfirmedAt   DateTime?
+  qrConfirmedById Int?
+
+  retailerId Int
+  riderId    Int?
+
+  retailer User  @relation("RetailerDeliveries", fields: [retailerId], references: [id])
+  rider    User? @relation("RiderDeliveries", fields: [riderId], references: [id])
+
+  statusHistory StatusHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StatusHistory {
+  id         Int      @id @default(autoincrement())
+  deliveryId Int
+  changedById Int
+  oldStatus  String?
+  newStatus  String
+  changedAt  DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+  changedBy User     @relation(fields: [changedById], references: [id])
+}
