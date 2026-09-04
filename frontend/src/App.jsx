@@ -2,7 +2,8 @@
 import { QRCodeSVG } from "qrcode.react";
 import { Html5Qrcode } from "html5-qrcode";
 
-const API_URL = "http://localhost:3000/api";
+// Use the live Render URL in production, or fallback to localhost for local testing
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 /* =========================================================
    STATUS CONFIGURATION
