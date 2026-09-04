@@ -1,7 +1,11 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg'; // <-- ADD THIS LINE
+import { PrismaPg } from '@prisma/adapter-pg';
+
+// Added missing route imports
+import { createDeliveryRoutes } from './routes/deliveryRoutes'; 
+import { createUserRoutes } from './routes/userRoutes'; 
 
 // Set up the PostgreSQL adapter
 const connectionString = process.env.DATABASE_URL;
