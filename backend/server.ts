@@ -2,7 +2,6 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
 import { createDeliveryRoutes } from "./routes/deliveryRoutes.ts";
 import { createUserRoutes } from "./routes/userRoutes";
 
