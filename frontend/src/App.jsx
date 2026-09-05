@@ -116,8 +116,13 @@ function DashboardShell({ children }) {
 function AdminDashboard({ user }) {
   const [users, setUsers] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
+  const [riders, setRiders] = useState([]);
+  const [selectedRiders, setSelectedRiders] = useState({});
+  const [assigning, setAssigning] = useState(null);
   const [loading, setLoading] = useState(true);
-    const [showAddUser, setShowAddUser] = useState(false);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("success");
 
   const [newUser, setNewUser] = useState({
     name: "",
@@ -147,15 +152,18 @@ function AdminDashboard({ user }) {
 
       setUsers(usersData);
       setDeliveries(deliveriesData);
+      setRiders(usersData.filter((u) => u.role === "RIDER"));
     } catch (error) {
       console.error(error);
+      setMessage("Failed to load data");
+      setMessageType("error");
     } finally {
       setLoading(false);
     }
   }
-    async function handleCreateUser(e) {
-    e.preventDefault();
 
+  async function handleCreateUser(e) {
+    e.preventDefault();
     setUserMessage("");
     setUserError("");
     setCreatingUser(true);
@@ -163,9 +171,7 @@ function AdminDashboard({ user }) {
     try {
       const response = await fetch(`${API_URL}/users/admin-create`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           adminId: user.id,
           name: newUser.name,
@@ -177,23 +183,11 @@ function AdminDashboard({ user }) {
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to create user");
-      }
+      if (!response.ok) throw new Error(data.message || "Failed to create user");
 
       setUserMessage("User created successfully.");
-
-      setNewUser({
-        name: "",
-        phone: "",
-        email: "",
-        password: "",
-        role: "DISPATCHER",
-      });
-
+      setNewUser({ name: "", phone: "", email: "", password: "", role: "DISPATCHER" });
       setShowAddUser(false);
-
       await loadAdminData();
     } catch (error) {
       setUserError(error.message);
@@ -201,218 +195,130 @@ function AdminDashboard({ user }) {
       setCreatingUser(false);
     }
   }
+
+  async function assignRider(deliveryId) {
+    const riderId = selectedRiders[deliveryId];
+    if (!riderId) {
+      setMessage("Please select a rider before assigning.");
+      setMessageType("error");
+      return;
+    }
+
+    setAssigning(deliveryId);
+    setMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/deliveries/${deliveryId}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ riderId: Number(riderId), dispatcherId: user.id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Failed to assign rider");
+
+      setMessage(`Delivery ${data.trackingCode} assigned successfully.`);
+      setMessageType("success");
+
+      setSelectedRiders((previous) => {
+        const updated = { ...previous };
+        delete updated[deliveryId];
+        return updated;
+      });
+
+      await loadAdminData();
+    } catch (error) {
+      console.error("Failed to assign rider:", error);
+      setMessage(error.message);
+      setMessageType("error");
+    } finally {
+      setAssigning(null);
+    }
+  }
+
   useEffect(() => {
     loadAdminData();
-
     const interval = setInterval(loadAdminData, 5000);
-
     return () => clearInterval(interval);
   }, []);
 
-  const adminCount = users.filter((u) => u.role === "ADMIN").length;
-  const dispatcherCount = users.filter((u) => u.role === "DISPATCHER").length;
-  const retailerCount = users.filter((u) => u.role === "RETAILER").length;
-  const riderCount = users.filter((u) => u.role === "RIDER").length;
-
-  const openDeliveries = deliveries.filter(
-    (d) => d.status === "OPEN"
-  ).length;
-
-  const activeDeliveries = deliveries.filter(
-    (d) => d.status === "ASSIGNED" || d.status === "PICKED_UP"
-  ).length;
-
-  const completedDeliveries = deliveries.filter(
-    (d) => d.status === "DELIVERED"
-  ).length;
+  const openDeliveries = deliveries.filter((d) => d.status === "OPEN").length;
 
   return (
     <div>
       <div style={styles.hero}>
         <div>
-          <div style={styles.heroEyebrow}>
-            🛡️ ADMIN CONTROL CENTER
-          </div>
-
-          <h1 style={styles.heroTitle}>
-            Welcome, {user.name}
-          </h1>
-
+          <div style={styles.heroEyebrow}>🛡️ ADMIN CONTROL CENTER</div>
+          <h1 style={styles.heroTitle}>Welcome, {user.name}</h1>
           <p style={styles.heroDescription}>
-            Manage users, monitor delivery operations and oversee the
-            Reflex platform.
+            Manage users, assign riders, and oversee the entire Reflex platform.
           </p>
         </div>
-
-        <div style={styles.heroVisual}>
-          🛡️
-        </div>
+        <div style={styles.heroVisual}>🛡️</div>
       </div>
+
+      <AlertMessage type={messageType} message={message} />
 
       <div style={styles.statsGrid}>
-        <StatCard
-          icon="👥"
-          label="Total Users"
-          value={users.length}
-          description="Registered accounts"
-          tone="blue"
-        />
-
-        <StatCard
-          icon="🛵"
-          label="Riders"
-          value={riderCount}
-          description="Delivery riders"
-          tone="purple"
-        />
-
-        <StatCard
-          icon="🏪"
-          label="Retailers"
-          value={retailerCount}
-          description="Retail accounts"
-          tone="amber"
-        />
-
-        <StatCard
-          icon="📦"
-          label="Deliveries"
-          value={deliveries.length}
-          description="All delivery requests"
-          tone="green"
-        />
+        <StatCard icon="👥" label="Total Users" value={users.length} description="Registered accounts" tone="blue" />
+        <StatCard icon="🛵" label="Riders" value={riders.length} description="Available delivery riders" tone="purple" />
+        <StatCard icon="" label="Retailers" value={users.filter((u) => u.role === "RETAILER").length} description="Retail accounts" tone="amber" />
+        <StatCard icon="📦" label="Open Deliveries" value={openDeliveries} description="Requiring assignment" tone="green" />
       </div>
 
-      <div style={styles.dashboardGrid}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px", marginBottom: "30px" }}>
+        
+        {/* USER MANAGEMENT PANEL */}
         <section style={styles.panel}>
           <SectionHeader
-  icon="👥"
-  title="User Management"
-  description="Users registered in Reflex"
-  right={
-    <button
-      style={styles.primaryButton}
-      onClick={() => {
-        setShowAddUser(!showAddUser);
-        setUserMessage("");
-        setUserError("");
-      }}
-    >
-      {showAddUser ? "✕ Close" : "+ Add User"}
-    </button>
-  }
-/>
-{userMessage && (
-  <div style={styles.successMessage}>
-    ✓ {userMessage}
-  </div>
-)}
+            icon="👥"
+            title="User Management"
+            description="Users registered in Reflex"
+            right={
+              <button style={styles.primaryButton} onClick={() => { setShowAddUser(!showAddUser); setUserMessage(""); setUserError(""); }}>
+                {showAddUser ? "✕ Close" : "+ Add User"}
+              </button>
+            }
+          />
+          
+          {userMessage && <div style={styles.successMessage}>✓ {userMessage}</div>}
+          {userError && <div style={styles.errorMessage}>⚠ {userError}</div>}
 
-{userError && (
-  <div style={styles.errorMessage}>
-    ⚠ {userError}
-  </div>
-)}
+          {showAddUser && (
+            <form onSubmit={handleCreateUser} style={styles.addUserForm}>
+              <div style={styles.formGrid}>
+                <div>
+                  <label style={styles.formLabel}>Full Name</label>
+                  <input style={styles.formInput} type="text" value={newUser.name} onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} placeholder="Enter full name" required />
+                </div>
+                <div>
+                  <label style={styles.formLabel}>Phone Number</label>
+                  <input style={styles.formInput} type="tel" value={newUser.phone} onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })} placeholder="07XXXXXXXX" required />
+                </div>
+                <div>
+                  <label style={styles.formLabel}>Email</label>
+                  <input style={styles.formInput} type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} placeholder="name@example.com" />
+                </div>
+                <div>
+                  <label style={styles.formLabel}>Password</label>
+                  <input style={styles.formInput} type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} placeholder="Enter password" required />
+                </div>
+                <div>
+                  <label style={styles.formLabel}>Role</label>
+                  <select style={styles.formInput} value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}>
+                    <option value="DISPATCHER">📋 Dispatcher</option>
+                    <option value="RETAILER">🏪 Retailer</option>
+                    <option value="RIDER"> Rider</option>
+                    <option value="ADMIN">🛡️ Admin</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" style={styles.primaryButton} disabled={creatingUser}>
+                {creatingUser ? "Creating..." : "Create User"}
+              </button>
+            </form>
+          )}
 
-{showAddUser && (
-  <form onSubmit={handleCreateUser} style={styles.addUserForm}>
-    <div style={styles.formGrid}>
-      <div>
-        <label style={styles.formLabel}>Full Name</label>
-        <input
-          style={styles.formInput}
-          type="text"
-          value={newUser.name}
-          onChange={(e) =>
-            setNewUser({
-              ...newUser,
-              name: e.target.value,
-            })
-          }
-          placeholder="Enter full name"
-          required
-        />
-      </div>
-
-      <div>
-        <label style={styles.formLabel}>Phone Number</label>
-        <input
-          style={styles.formInput}
-          type="tel"
-          value={newUser.phone}
-          onChange={(e) =>
-            setNewUser({
-              ...newUser,
-              phone: e.target.value,
-            })
-          }
-          placeholder="07XXXXXXXX"
-          required
-        />
-      </div>
-
-      <div>
-        <label style={styles.formLabel}>Email</label>
-        <input
-          style={styles.formInput}
-          type="email"
-          value={newUser.email}
-          onChange={(e) =>
-            setNewUser({
-              ...newUser,
-              email: e.target.value,
-            })
-          }
-          placeholder="name@example.com"
-        />
-      </div>
-
-      <div>
-        <label style={styles.formLabel}>Password</label>
-        <input
-          style={styles.formInput}
-          type="password"
-          value={newUser.password}
-          onChange={(e) =>
-            setNewUser({
-              ...newUser,
-              password: e.target.value,
-            })
-          }
-          placeholder="Enter password"
-          required
-        />
-      </div>
-
-      <div>
-        <label style={styles.formLabel}>Role</label>
-        <select
-          style={styles.formInput}
-          value={newUser.role}
-          onChange={(e) =>
-            setNewUser({
-              ...newUser,
-              role: e.target.value,
-            })
-          }
-        >
-          <option value="DISPATCHER">📋 Dispatcher</option>
-          <option value="RETAILER">🏪 Retailer</option>
-          <option value="RIDER">🛵 Rider</option>
-          <option value="ADMIN">🛡️ Admin</option>
-        </select>
-      </div>
-    </div>
-
-    <button
-      type="submit"
-      style={styles.primaryButton}
-      disabled={creatingUser}
-    >
-      {creatingUser ? "Creating..." : "Create User"}
-    </button>
-  </form>
-)}
           {loading ? (
             <p style={styles.mutedText}>Loading users...</p>
           ) : users.length === 0 ? (
@@ -427,31 +333,15 @@ function AdminDashboard({ user }) {
                     <th style={styles.tableHeader}>Role</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {users.map((account) => {
-                    const roleMeta =
-                      ROLE_META[account.role] || ROLE_META.RETAILER;
-
+                    const roleMeta = ROLE_META[account.role] || ROLE_META.RETAILER;
                     return (
                       <tr key={account.id}>
+                        <td style={styles.tableCell}><strong>{account.name}</strong></td>
+                        <td style={styles.tableCell}>{account.phone}</td>
                         <td style={styles.tableCell}>
-                          <strong>{account.name}</strong>
-                        </td>
-
-                        <td style={styles.tableCell}>
-                          {account.phone}
-                        </td>
-
-                        <td style={styles.tableCell}>
-                          <span
-                            style={{
-                              ...styles.statusBadge,
-                              background: "#f3f4f6",
-                              color: "#374151",
-                              borderColor: "#e5e7eb",
-                            }}
-                          >
+                          <span style={{ ...styles.statusBadge, background: "#f3f4f6", color: "#374151", borderColor: "#e5e7eb" }}>
                             {roleMeta.icon} {roleMeta.label}
                           </span>
                         </td>
@@ -464,57 +354,66 @@ function AdminDashboard({ user }) {
           )}
         </section>
 
-        <section style={styles.panel}>
-          <SectionHeader
-            icon="📊"
-            title="Delivery Overview"
-            description="Current operational status"
-          />
+        {/* DELIVERY QUEUE PANEL (Using your exact DeliveryCard layout) */}
+        <section>
+          <SectionHeader icon="▤" title="Delivery Queue" description="Review requests and assign available riders." right={<SyncIndicator />} />
+          
+          {deliveries.length === 0 ? (
+            <EmptyState icon="📋" title="No deliveries in the queue" text="New delivery requests will appear here." />
+          ) : (
+            <div style={styles.grid}>
+              {deliveries.map((delivery) => (
+                <DeliveryCard key={delivery.id} delivery={delivery}>
+                  {delivery.status === "OPEN" && (
+                    <div style={styles.assignBox}>
+                      <div style={styles.assignBoxHeader}>
+                        <div>
+                          <strong>Assign Rider</strong>
+                          <div style={styles.mutedText}>Select a rider for this request.</div>
+                        </div>
+                        <span style={styles.actionRequiredBadge}>ACTION REQUIRED</span>
+                      </div>
+                      <select 
+                        value={selectedRiders[delivery.id] || ""} 
+                        onChange={(e) => setSelectedRiders((prev) => ({ ...prev, [delivery.id]: e.target.value }))} 
+                        style={styles.riderSelect}
+                      >
+                        <option value="">Select rider...</option>
+                        {riders.map((rider) => (
+                          <option key={rider.id} value={rider.id}>
+                            {rider.name} — {rider.phone}
+                          </option>
+                        ))}
+                      </select>
+                      <button 
+                        style={styles.primaryButton} 
+                        onClick={() => assignRider(delivery.id)} 
+                        disabled={assigning === delivery.id}
+                      >
+                        {assigning === delivery.id ? "Assigning..." : "Assign Rider"}
+                      </button>
+                    </div>
+                  )}
 
-          <div style={styles.adminStatusList}>
-            <div style={styles.adminStatusRow}>
-              <span>Open</span>
-              <strong>{openDeliveries}</strong>
+                  {delivery.status !== "OPEN" && delivery.rider && (
+                    <div style={styles.riderDisplay}>
+                      <div style={styles.avatar}>{delivery.rider.name.charAt(0).toUpperCase()}</div>
+                      <div>
+                        <div style={styles.mutedText}>Assigned to:</div>
+                        <strong>{delivery.rider.name}</strong>
+                      </div>
+                      <span style={styles.assignedPill}>ASSIGNED</span>
+                    </div>
+                  )}
+                </DeliveryCard>
+              ))}
             </div>
-
-            <div style={styles.adminStatusRow}>
-              <span>Active</span>
-              <strong>{activeDeliveries}</strong>
-            </div>
-
-            <div style={styles.adminStatusRow}>
-              <span>Completed</span>
-              <strong>{completedDeliveries}</strong>
-            </div>
-          </div>
-
-          <div style={styles.adminRoleSummary}>
-            <div>
-              <span>🛡️ Admins</span>
-              <strong>{adminCount}</strong>
-            </div>
-
-            <div>
-              <span>📋 Dispatchers</span>
-              <strong>{dispatcherCount}</strong>
-            </div>
-
-            <div>
-              <span>🛵 Riders</span>
-              <strong>{riderCount}</strong>
-            </div>
-
-            <div>
-              <span>🏪 Retailers</span>
-              <strong>{retailerCount}</strong>
-            </div>
-          </div>
+          )}
         </section>
       </div>
     </div>
   );
 }
-
 function StatCard({ icon, label, value, description, tone = "default" }) {
   const tones = {
     default: { background: "#eff6ff", color: "#1d4ed8" },
