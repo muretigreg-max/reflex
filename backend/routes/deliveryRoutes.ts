@@ -253,11 +253,12 @@ export function createDeliveryRoutes(prisma: PrismaClient) {
         where: { id: dispatcherId },
       });
 
-      if (!dispatcher || dispatcher.role !== "DISPATCHER") {
-        return res.status(403).json({
-          message: "Only a dispatcher can assign a rider",
-        });
-      }
+          // Allow both DISPATCHER and ADMIN to assign riders
+    if (!dispatcher || (dispatcher.role !== "DISPATCHER" && dispatcher.role !== "ADMIN")) {
+      return res.status(403).json({
+        message: "Only a dispatcher or admin can assign a rider.",
+      });
+    }
 
       const delivery = await prisma.delivery.findUnique({
         where: { id: deliveryId },
