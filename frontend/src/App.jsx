@@ -965,41 +965,38 @@ function LoginScreen({ onLogin }) {
             </button>
           </form>
 
-          <div style={styles.demoBox}>
-            <div style={styles.demoHeader}>
-              <span style={styles.demoIcon}>🧪</span>
-              <div>
-                <strong>Demo access</strong>
-                <div style={styles.demoSubtitle}>Use any account below to explore REFLEX.</div>
-              </div>
-            </div>
-            <div style={styles.demoAccounts}>
-              <div style={styles.demoAccount}>
-                <span style={styles.demoAccountIcon}>🏪</span>
-                <div style={styles.demoAccountInfo}>
-                  <strong>Retailer</strong>
-                  <span>0700000001</span>
-                </div>
-              </div>
-              <div style={styles.demoAccount}>
-                <span style={styles.demoAccountIcon}>📋</span>
-                <div style={styles.demoAccountInfo}>
-                  <strong>Dispatcher</strong>
-                  <span>0700000002</span>
-                </div>
-              </div>
-              <div style={styles.demoAccount}>
-                <span style={styles.demoAccountIcon}>🛵</span>
-                <div style={styles.demoAccountInfo}>
-                  <strong>Rider</strong>
-                  <span>0700000003</span>
-                </div>
-              </div>
-            </div>
-            <div style={styles.demoPassword}>
-              Password for all demo accounts: <strong> demo123</strong>
-            </div>
-          </div>
+          <div style={styles.featuresBox}>
+  <div style={styles.featuresHeader}>
+    <div style={styles.featuresIcon}>✨</div>
+    <div>
+      <strong>Why Choose Reflex?</strong>
+      <div style={styles.featuresSubtitle}>Built for Kenyan retailers</div>
+    </div>
+  </div>
+  <div style={styles.featuresList}>
+    <div style={styles.featureItem}>
+      <span style={styles.featureIcon}>📍</span>
+      <div>
+        <strong>Real-Time Tracking</strong>
+        <div style={styles.featureText}>Know where every delivery is, instantly</div>
+      </div>
+    </div>
+    <div style={styles.featureItem}>
+      <span style={styles.featureIcon}>🔒</span>
+      <div>
+        <strong>Proof of Delivery</strong>
+        <div style={styles.featureText}>QR code verification prevents fraud</div>
+      </div>
+    </div>
+    <div style={styles.featureItem}>
+      <span style={styles.featureIcon}>⚡</span>
+      <div>
+        <strong>Fast Assignment</strong>
+        <div style={styles.featureText}>Assign riders in seconds, not phone calls</div>
+      </div>
+    </div>
+  </div>
+</div>
 
           <div style={{ marginTop: "20px", textAlign: "center" }}>
             <button style={styles.btnLink} onClick={() => { setShowRegister(!showRegister); setErrorMessage(""); }}>
